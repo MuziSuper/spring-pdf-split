@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>木子生的pdf拆分网站</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg: #0b1220;
+            --card: #0f172a;
+            --muted: #94a3b8;
+            --text: #e2e8f0;
+            --accent: #22d3ee;
+            --danger: #ef4444;
+            --success: #10b981;
+            --ring: rgba(34, 211, 238, 0.35);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(180deg, #0b1220 0%, #0b1220 60%, #0d1324 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: saturate(180%) blur(10px);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 50;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .brand-logo {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #0b1220;
+            font-weight: 900;
+        }
+        .brand-title { font-size: 16px; }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .header-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .header-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .header-btn:hover { background: var(--primary-dark); }
+
+        /* Layout */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 84px 20px 40px; /* header offset */
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        /* Carousel */
+        .carousel {
+            position: relative;
+            overflow: hidden;
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            background: linear-gradient(180deg, rgba(34, 211, 238, 0.05), rgba(37, 99, 235, 0.05));
+        }
+        /* 走马灯：采用渐进淡入淡出动画 + 循环播放 */
+        .carousel-slides {
+            position: relative;
+            width: 100%;
+            height: 400px;
+        }
+        .carousel-item {
+            position: absolute;
+            inset: 16px; /* 统一内边距，呈现圆角和描边 */
+            border-radius: 23px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            overflow: hidden;
+            display: grid;
+            place-items: center;
+            color: var(--muted);
+            background: #0b1220;
+            opacity: 0;
+            animation: fadeCarousel 16s infinite;
+        }
+        /* 渐进动画关键帧：每张图显示 20%，之间 5% 为过渡 */
+        @keyframes fadeCarousel {
+            0% { opacity: 0; }
+            5% { opacity: 1; }
+            25% { opacity: 1; }
+            30% { opacity: 0; }
+            100% { opacity: 0; }
+        }
+        /* 为每张图设置不同的延迟，形成轮播 */
+        .carousel-item:nth-child(1) { animation-delay: 0s; }
+        .carousel-item:nth-child(2) { animation-delay: 4s; }
+        .carousel-item:nth-child(3) { animation-delay: 8s; }
+        .carousel-item:nth-child(4) { animation-delay: 12s; }
+        .carousel-item img { width: 100%; height: 100%; object-fit: cover; }
+        .carousel-hint { padding: 10px 14px; font-size: 12px; color: var(--muted); }
+
+        /* Card */
+        .card {
+            background: var(--card);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 16px;
+            padding: 18px;
+        }
+
+        /* Uploader */
+        .uploader {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        .dropzone {
+            border: 2px dashed rgba(148, 163, 184, 0.3);
+            border-radius: 14px;
+            padding: 22px;
+            text-align: center;
+            color: var(--muted);
+            transition: border-color 0.2s, background 0.2s;
+            background: rgba(2, 6, 23, 0.4);
+        }
+        .dropzone.dragover {
+            border-color: var(--accent);
+            background: rgba(34, 211, 238, 0.06);
+        }
+        .dropzone input[type="file"] { display: none; }
+        .dropzone .btn {
+            background: #111827;
+            color: var(--text);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        /* 表单网格：左列为标签，右列为控件，保证对齐 */
+        .form-grid { display: grid; gap: 14px; grid-template-columns: 160px 1fr; align-items: center; }
+        .field { display: contents; }
+        .label {
+            font-size: 13px; color: var(--muted);
+            justify-self: start;
+        }
+        .input, .select, .radio-group {
+            background: #0b1220;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 10px;
+        }
+        .input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px var(--ring);
+        }
+
+        .radio-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .radio {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #0b1220;
+            border: 1px solid rgba(148,163,184,0.2);
+            padding: 8px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .radio input { accent-color: var(--accent); }
+
+        .actions { display: flex; gap: 10px; align-items: center; }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border: none;
+            color: #0b1220;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn-primary[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+        .hint { font-size: 12px; color: var(--muted); }
+        .error { color: var(--danger); font-size: 13px; }
+
+        /* History List */
+        .history { margin-top: 16px; display: grid; gap: 10px; }
+        .history-item {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: 1fr auto auto auto;
+            align-items: center;
+            padding: 12px;
+            background: #0b1220;
+            border: 1px solid rgba(148,163,184,0.2);
+            border-radius: 12px;
+        }
+        .pill { font-size: 12px; color: var(--muted); }
+        .link-btn { color: var(--accent); text-decoration: none; font-weight: 600; }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            right: 18px;
+            bottom: 90px;
+            display: grid;
+            gap: 10px;
+            z-index: 40;
+        }
+        .fab {
+            background: #0b1220;
+            border: 1px solid rgba(148,163,184,0.25);
+            color: var(--text);
+            width: 46px; height: 46px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+        }
+        .fab:hover { border-color: var(--accent); }
+
+        /* Footer */
+        .footer {
+            margin-top: 20px;
+            padding: 16px 20px 26px;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (min-width: 960px) {
+            .container { grid-template-columns: 1fr; }
+            .uploader { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="brand">
+            <div class="brand-logo">PDF</div>
+            <div class="brand-title">木子生的pdf拆分网站</div>
+        </div>
+        <div class="header-actions">
+            <a class="header-link" href="#how">如何使用</a>
+            <a class="header-link" href="#faq">FAQ</a>
+            <button class="header-btn" id="clearHistoryBtn" title="清空历史">清空历史</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- 走马灯轮播：使用绝对定位 + 关键帧实现淡入淡出 -->
+        <section class="carousel" aria-label="示例滚动屏">
+            <div class="carousel-slides" id="carouselSlides">
+                <div class="carousel-item">
+                    <img src="./1.png" alt="展示图1">
+                </div>
+                <div class="carousel-item">
+                    <img src="./2.png" alt="展示图2">
+                </div>
+                <div class="carousel-item">
+                    <img src="./3.png" alt="展示图3">
+                </div>
+                <div class="carousel-item">
+                    <img src="./4.png" alt="展示图4">
+                </div>
+            </div>
+        </section>
+
+        <section class="card" id="uploaderCard">
+            <div class="uploader">
+                <div class="dropzone" id="dropzone">
+                    <input id="fileInput" type="file" accept="application/pdf" multiple>
+                    <div>
+                        拖拽PDF到此处或
+                        <label for="fileInput" class="btn">选择文件</label>
+                    </div>
+                    <div class="hint">支持多文件，文件类型需为 PDF</div>
+                    <div id="fileCount" class="pill"></div>
+                </div>
+
+                <!-- 表单对齐采用两列网格：左列标签，右列控件 -->
+                <div class="form-grid">
+                    <div class="field">
+                        <label class="label" for="pageInput">每份页数（≥ 1 的整数）</label>
+                        <input class="input" id="pageInput" type="number" min="1" step="1" placeholder="例如：5">
+                    </div>
+                    <div class="field">
+                        <div class="label">目标文件大小限制（二选一，可不选）</div>
+                        <div class="radio-group">
+                            <div class="radio-row">
+                                <label class="radio"><input type="radio" name="limitSize" value="10240">10KB</label>
+                                <label class="radio"><input type="radio" name="limitSize" value="102400">100KB</label>
+                                <label class="radio"><input type="radio" name="limitSize" value="1048576">1MB</label>
+                                <label class="radio"><input type="radio" name="limitSize" value="10485760">10MB</label>
+                                <label class="radio"><input type="radio" name="limitSize" value="104857600">100MB</label>
+                                <label class="radio"><input type="radio" name="limitSize" value="1073741824">1GB</label>
+                            </div>
+                        </div>
+                        <div class="hint">与“每份页数”至少填写一个。如果都填写，后端会综合处理。</div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button id="uploadBtn" class="btn-primary">开始拆分并打包</button>
+                    <span id="statusText" class="hint"></span>
+                </div>
+
+                <div id="formError" class="error"></div>
+                <div id="response" class="hint"></div>
+
+                <div class="history" id="historyList"></div>
+            </div>
+        </section>
+
+        <section class="card" id="how">
+            <h3 style="margin:0 0 10px 0;">如何使用</h3>
+            <ol style="margin:0; padding-left: 18px; color: var(--muted);">
+                <li>拖拽或选择多个 PDF 文件；</li>
+                <li>填写“每份页数”或选择“目标文件大小限制”，至少二者之一；</li>
+                <li>点击“开始拆分并打包”，等待生成 ZIP；</li>
+                <li>结果会出现在下方历史列表中，可随时下载；刷新页面也将保留。</li>
+            </ol>
+        </section>
+
+        <!-- FAQ：基于 README.md 关键技术扩展说明，方便用户理解使用与约束 -->
+        <section class="card" id="faq">
+            <h3 style="margin:0 0 10px 0;">FAQ</h3>
+            <div style="display:grid; gap:10px; color: var(--muted); font-size:14px;">
+                <div>
+                    <strong>Q：支持哪些拆分方式？</strong><br>
+                    A：支持两种策略：按“每份页数（page）”或按“目标大小（size）”。二者至少填一个，若同时填写，后端会综合处理。
+                </div>
+                <div>
+                    <strong>Q：page/size 的单位是什么？</strong><br>
+                    A：page 为份内页数（≥1 的整数）；size 为字节数（如 1MB=1048576）。页面提供了常用预设（10KB/100KB/1MB/10MB/100MB/1GB）。
+                </div>
+                <div>
+                    <strong>Q：背后使用了哪些技术？</strong><br>
+                    A：后端基于 Spring Boot 构建，使用 Apache PDFBox 进行 PDF 拆分、Java ZipOutputStream 进行 ZIP 打包，文件可上传至腾讯云 COS 存储。
+                </div>
+                <div>
+                    <strong>Q：为什么需要用户 ID？</strong><br>
+                    A：接口路径包含 {userId} 以便未来扩展用户级隔离与审计。目前页面默认以 0 占位提交。
+                </div>
+                <div>
+                    <strong>Q：安全方面如何考虑？</strong><br>
+                    A：建议在服务端通过环境变量/加密配置注入 COS 密钥，限制单次上传大小与并发，必要时加入限流，详见 README 的“安全性增强”。
+                </div>
+                <div>
+                    <strong>Q：性能如何优化？</strong><br>
+                    A：可考虑异步队列/分布式处理、优化内存占用与缓存重复文件。详见 README 的“性能优化方向”。
+                </div>
+                <div>
+                    <strong>Q：历史列表是否持久？</strong><br>
+                    A：前端使用 localStorage 存储历史记录（仅保存文件名、大小、时间与临时 URL），刷新页面仍可见；你可随时点击右上角“清空历史”。
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="sidebar">
+        <button class="fab" title="回到顶部" id="toTop">↑</button>
+        <button class="fab" title="历史" onclick="document.getElementById('historyList').scrollIntoView({behavior:'smooth'});">⏱</button>
+    </div>
+
+    <footer class="footer">
+        本站仅用于学术与技术演示，不保存用户文件。联系邮箱：lxh2022304460@163.com ｜ QQ：1159565819 ｜ 微信：17754885251
+    </footer>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const dropzone = document.getElementById('dropzone');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const pageInput = document.getElementById('pageInput');
+        const statusText = document.getElementById('statusText');
+        const formError = document.getElementById('formError');
+        const responseHint = document.getElementById('response');
+        const fileCount = document.getElementById('fileCount');
+        const historyList = document.getElementById('historyList');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+        const API_PREFIX = '/pdf';
+        const DEFAULT_USER_ID = 0; // 后端路径变量必需存在，这里使用占位 0
+
+        function formatBytes(bytes) {
+            if (!Number.isFinite(bytes) || bytes < 0) return '-';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let i = 0; let num = bytes;
+            while (num >= 1024 && i < units.length - 1) { num /= 1024; i++; }
+            return `${num.toFixed(num >= 10 || num % 1 === 0 ? 0 : 1)}${units[i]}`;
+        }
+
+        function nowString() {
+            const d = new Date();
+            const pad = (n) => `${n}`.padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        }
+
+        function getSelectedLimit() {
+            const el = document.querySelector('input[name="limitSize"]:checked');
+            return el ? Number(el.value) : undefined;
+        }
+
+        function clearInputs() {
+            fileInput.value = '';
+            document.querySelectorAll('input[name="limitSize"]').forEach(r => r.checked = false);
+            pageInput.value = '';
+            fileCount.textContent = '';
+        }
+
+        function persistHistory(list) {
+            try { localStorage.setItem('zipHistory', JSON.stringify(list)); } catch (e) {}
+        }
+
+        function readHistory() {
+            try {
+                const raw = localStorage.getItem('zipHistory');
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) { return []; }
+        }
+
+        function renderHistory() {
+            const items = readHistory();
+            historyList.innerHTML = '';
+            items.forEach((it, idx) => {
+                const row = document.createElement('div');
+                row.className = 'history-item';
+                row.innerHTML = `
+                    <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <strong>${it.name}</strong>
+                    </div>
+                    <div class="pill">${formatBytes(it.size || 0)}</div>
+                    <div class="pill">${it.time}</div>
+                    <div><a class="link-btn" href="${it.url}" download="${it.name}">下载</a></div>
+                `;
+                historyList.appendChild(row);
+            });
+        }
+
+        function setLoading(loading, text = '') {
+            uploadBtn.disabled = loading;
+            statusText.textContent = loading ? (text || '正在处理，请稍候…') : '';
+        }
+
+        // Dropzone events
+        ['dragenter','dragover'].forEach(evt => {
+            dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); });
+        });
+        ;['dragleave','drop'].forEach(evt => {
+            dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); });
+        });
+        dropzone.addEventListener('drop', (e) => {
+            const files = Array.from(e.dataTransfer.files || []).filter(f => f.type === 'application/pdf');
+            if (files.length === 0) return;
+            const dt = new DataTransfer();
+            Array.from(fileInput.files || []).forEach(f => dt.items.add(f));
+            files.forEach(f => dt.items.add(f));
+            fileInput.files = dt.files;
+            fileCount.textContent = `已选择 ${fileInput.files.length} 个文件`;
+        });
+        fileInput.addEventListener('change', () => {
+            fileCount.textContent = fileInput.files.length > 0 ? `已选择 ${fileInput.files.length} 个文件` : '';
+        });
+
+        // Upload
+        uploadBtn.addEventListener('click', async () => {
+            formError.textContent = '';
+            responseHint.textContent = '';
+
+            const files = fileInput.files;
+            if (!files || files.length === 0) {
+                formError.textContent = '请先选择至少一个 PDF 文件。';
+                return;
+            }
+
+            // 读取页数值：空为 undefined，用于与 size 做“至少一个”校验
+            const pageVal = pageInput.value ? Number(pageInput.value) : undefined;
+            const sizeVal = getSelectedLimit();
+
+            if ((pageVal == null || Number.isNaN(pageVal)) && (sizeVal == null || Number.isNaN(sizeVal))) {
+                formError.textContent = '至少填写“每份页数”或选择“大小限制”中的一个。';
+                return;
+            }
+            // 页数校验：调整为 >= 1 的整数
+            if (pageVal != null) {
+                if (!Number.isInteger(pageVal) || pageVal < 1) {
+                    formError.textContent = '“每份页数”必须是大于等于 1 的整数。';
+                    return;
+                }
+            }
+
+            const formData = new FormData();
+            Array.from(files).forEach(f => formData.append('files', f));
+            if (pageVal != null && !Number.isNaN(pageVal)) formData.append('page', String(pageVal));
+            if (sizeVal != null && !Number.isNaN(sizeVal)) formData.append('size', String(sizeVal));
+
+            setLoading(true);
+
+            let resp;
+            try {
+                resp = await fetch(`http://localhost:8080/${API_PREFIX}/split/${DEFAULT_USER_ID}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!resp.ok) {
+                    // 尝试读取错误信息
+                    let message = `请求失败（HTTP ${resp.status}）`;
+                    try {
+                        const ct = resp.headers.get('content-type') || '';
+                        if (ct.includes('application/json')) {
+                            const j = await resp.json();
+                            message = j.message || j.msg || j.error || message;
+                        } else {
+                            const t = await resp.text();
+                            if (t) message = t;
+                        }
+                    } catch (e) {}
+                    throw new Error(message);
+                }
+
+                const blob = await resp.blob();
+
+                // 解析文件名与大小
+                const disp = resp.headers.get('content-disposition') || '';
+                const nameMatch = disp.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
+                let fileName = nameMatch ? decodeURIComponent((nameMatch[1] || nameMatch[2] || '').trim()) : '';
+                if (!fileName) fileName = `split_result_${new Date().toISOString().replace(/[:.]/g,'-')}.zip`;
+                const size = Number(resp.headers.get('content-length')) || blob.size || 0;
+
+                // 生成可下载链接
+                const url = URL.createObjectURL(blob);
+
+                // 下载行为（用户点击历史里的下载按钮时再下载，这里仅入库与可选自动下载）
+                const history = readHistory();
+                history.unshift({ name: fileName, size, time: nowString(), url });
+                persistHistory(history);
+                renderHistory();
+
+                responseHint.textContent = '已生成压缩包，见下方历史列表。';
+            } catch (err) {
+                formError.textContent = (err && err.message) ? err.message : '请求失败，请稍后再试。';
+            } finally {
+                setLoading(false);
+                clearInputs();
+            }
+        });
+
+        document.getElementById('toTop').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        clearHistoryBtn.addEventListener('click', () => { persistHistory([]); renderHistory(); });
+
+        // 初始渲染
+        renderHistory();
+    </script>
+</body>
+</html>
